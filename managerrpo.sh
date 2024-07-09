@@ -65,10 +65,12 @@ alterar_ini() {
     if [ $key_updated -eq 1 ]; then
         # Replace the original ini file with the temp file
         mv "$temp_file" "$ini_file"
-        echo "Atualizado '$key' na sessao '$section' para '$new_value' no arquivo  '$ini_file'."
+        echo "Atualizado '$key' na sessao '$section' para '$new_value'  arquivo  '$ini_file'."
+        echo "$(date) | User:$(whoami) | Atualizado '$key' na sessao '$section' para '$new_value'  arquivo  '$ini_file'." >> "$logfile" 
     else
         rm "$temp_file"
-        echo "Erro: chave '$key' nao localizada na sessao '$section' no arquivo  '$ini_file'."
+        echo "Erro: chave '$key' nao localizada na sessao '$section'  arquivo  '$ini_file'."
+        echo "$(date) | User:$(whoami) | Erro: chave '$key' nao localizada na sessao '$section'  arquivo  '$ini_file'." >> "$logfile" 
     fi
 }
 
@@ -81,119 +83,111 @@ function change_rpo_file() {
     # Load INI file configurations
     cDataAtual=$(date +"%Y%m%d_%H%M%S")
     cFolderBak="bak_appserver_ini"
-    cPathProtheus=$(get_ini_value "ambiente" "pathprotheus")
-    cPathProtheusRemoto=$(get_ini_value "ambiente" "pathprotheusRemoto")
+    #cPathProtheus=$(get_ini_value "ambiente" "pathprotheus")
+    #cPathProtheusRemoto=$(get_ini_value "ambiente" "pathprotheusRemoto")
     cPathRPO=$(get_ini_value "ambiente" "pathrpo")
     cPathAtualizaRPO=$(get_ini_value "ambiente" "pathatualizarpo")
     cPathBinarios=$(get_ini_value "ambiente" "pathbinarios")
     rponamecustom=$(get_ini_value "ambiente" "rponamecustom")
     rponamedefault=$(get_ini_value "ambiente" "rponamedefault")
+    ambienteatualizarpo=$(get_ini_value "ambiente" "ambienteatualizarpo")
 
-    pathrpocustom=$(get_ini_value "ambiente" "pathrpocustom")
-    pathrpodefault=$(get_ini_value "ambiente" "pathrpodefault")
+
+    pathprotheusdefault=$(get_ini_value "ambiente" "pathprotheusdefault")
 
 
     IFS=',' read -r -a aAppservers <<< "$(get_ini_value "ambiente" "appservers")"
-    cEnvironment=$(get_ini_value "ambiente" "environment")
+    IFS=',' read -r -a aPathprotheus <<< "$(get_ini_value "ambiente" "pathprotheus")"
+    IFS=',' read -r -a aEnvironment <<< "$(get_ini_value "ambiente" "environment")"
+
     cPathBinarioDefrag=$(get_ini_value "ambiente" "binariodefrag")
 
     cAppserverNameFile="appserver"
     cAppserverIniFile="${cAppserverNameFile}.ini"
-    logfile="${SCRIPT_DIR}\managerRPO.log"
+    logfile="${SCRIPT_DIR}/managerrpo.log"
 
 
 
-    if [ "$cTipoTrocaDoRpo" = "custom" ]; then
-        cRPODestPath="${cPathRPO}/${cEnvironment}/$cTipoTrocaDoRpo/$cDataAtual"
-        cRPODestPathWithFileName=${cRPODestPath}/${rponamecustom}
-        cRPOOrigem="${cPathAtualizaRPO}/${rponamecustom}"
-        cRPONewFileAPO=${cRPODestPathWithFileName}
-        if [[ ! -f "${cRPOOrigem}" ]]; then
-            echo "RPO de origem (custom) não localizado: $cRPOOrigem"
-            return 1
-        fi
+    for cEnvironment in "${aEnvironment[@]}"; do
+    
 
-
-    else
-        cRPODestPath="${cPathRPO}/${cEnvironment}/$cTipoTrocaDoRpo/$cDataAtual"
-        cRPODestPathWithFileName=${cRPODestPath}/${rponamedefault}
-        cRPOOrigem="${cPathAtualizaRPO}/${rponamedefault}"
-        cRPONewFileAPO=${cRPODestPath}
-
-        if [[ ! -f "${cRPOOrigem}" ]]; then
-            echo "RPO de origem (default) não localizado: $cRPOOrigem"
-            return 1
-        fi
-
-    fi
+        echo "Ambiente: ${cEnvironment}"
+       # echo "Desfragmentando RPO"
         
-   # echo "Criando nova pasta $cRPODestPath"
-    mkdir -p "$cRPODestPath"
-    cp "$cRPOOrigem" "$cRPODestPathWithFileName"
-   
+        #cd $pathprotheusdefault$cPathBinarios
+        #.$cPathBinarioDefrag -compile -defragrpo -env=$ambienteatualizarpo 
 
-    #echo "Verificando se o arquivo foi copiado $cRPODestPathWithFileName"
-    if [[ ! -f "$cRPODestPathWithFileName" ]]; then
-        echo "RPO destino não localizado: $cRPODestPathWithFileName"
-        return 1
-    fi
+        for pathprotheus in "${aPathprotheus[@]}"; do
+               
+            if [ "$cTipoTrocaDoRpo" = "custom" ]; then
+                cRPODestPath="${pathprotheus}${cPathRPO}/${cEnvironment}/$cTipoTrocaDoRpo/$cDataAtual"
+                cRPODestPathWithFileName=${cRPODestPath}/${rponamecustom}
+                cRPOOrigem="${cPathAtualizaRPO}/${rponamecustom}"
+                cRPONewFileAPO="${pathprotheusdefault}${cPathRPO}/${cEnvironment}/$cTipoTrocaDoRpo/$cDataAtual"/${rponamecustom}
+                if [[ ! -f "${cRPOOrigem}" ]]; then
+                    echo "RPO de origem (custom) não localizado: $cRPOOrigem"
+                    return 1
+                fi
 
-    #if [[ -d "$cRPODestPathRemoto" && ! -d "$cRPODestPathRemoto" ]]; then
-    #    echo "RPO remoto nao localizado: $cRPODestPathRemoto"
-     #   return 1
-    #fi
-   
 
-    for appserver in "${aAppservers[@]}"; do
+            else
+                cRPODestPath=${pathprotheus}"${cPathRPO}/${cEnvironment}/$cTipoTrocaDoRpo/$cDataAtual"
+                cRPODestPathWithFileName=${cRPODestPath}/${rponamedefault}
+                cRPOOrigem="${cPathAtualizaRPO}/${rponamedefault}"
+                cRPONewFileAPO=${pathprotheusdefault}"${cPathRPO}/${cEnvironment}/$cTipoTrocaDoRpo/$cDataAtual" 
 
-         if [ ! -d "${cPathProtheus}${cPathBinarios}/${appserver}/${cFolderBak}" ]; then
-            # If the folder does not exist, create it
-            mkdir -p "${cPathProtheus}${cPathBinarios}/${appserver}/${cFolderBak}"
-            #echo "Pasta criada: ${cPathProtheus}${cPathBinarios}/${appserver}/${cFolderBak}"
-        fi
-        cIniFile="${cPathProtheus}${cPathBinarios}/${appserver}/${cAppserverIniFile}"
-        cIniFileBak="${cPathProtheus}${cPathBinarios}/${appserver}/${cFolderBak}/${cAppserverNameFile}.ini.${cDataAtual}.bak"
-   
+                if [[ ! -f "${cRPOOrigem}" ]]; then
+                    echo "RPO de origem (default) não localizado: $cRPOOrigem"
+                    return 1
+                fi
 
-        #echo "Efetuado backup do arquivo INI: $cIniFileBak"
-        cp "$cIniFile" "$cIniFileBak"
-        if [[ ! -f "$cIniFileBak" ]]; then
-            echo "Falha ao criar arquivo de backup: $cIniFileBak"
-            return 1
-        fi
-        #echo "Atualizado INI para novo RPO"
- 
-        alterar_ini "$cIniFile" "$cEnvironment" "$cKeyINIRPO" "$cRPONewFileAPO"
+            fi
+
+                
+           # echo "Criando nova pasta $cRPODestPath"
+            echo "Copiando novo RPO "$cRPOOrigem" "$cRPODestPathWithFileName""
+            #echo $cRPODestPath
+            mkdir -p "$cRPODestPath"
+
+            cp "$cRPOOrigem" "$cRPODestPathWithFileName"
+            
+            #exit
+
+            #echo "Verificando se o arquivo foi copiado $cRPODestPathWithFileName"
+            if [[ ! -f "$cRPODestPathWithFileName" ]]; then
+                echo "RPO destino não localizado: $cRPODestPathWithFileName"
+                return 1
+            fi
+
+            for appserver in "${aAppservers[@]}"; do
+
+                if  [ -d "${pathprotheus}${cPathBinarios}/${appserver}" ]; then
+
+                    if [ ! -d "${pathprotheus}${cPathBinarios}/${appserver}/${cFolderBak}" ]; then
+                        # If the folder does not exist, create it
+                        mkdir -p "${pathprotheus}${cPathBinarios}/${appserver}/${cFolderBak}"
+                        #echo "Pasta criada: ${cPathProtheus}${cPathBinarios}/${appserver}/${cFolderBak}"
+                    fi
+                    cIniFile="${pathprotheus}${cPathBinarios}/${appserver}/${cAppserverIniFile}"
+                    cIniFileBak="${pathprotheus}${cPathBinarios}/${appserver}/${cFolderBak}/${cAppserverNameFile}.ini.${cDataAtual}.bak"
+               
+
+                    #echo "Efetuado backup do arquivo INI: $cIniFileBak"
+                    cp "$cIniFile" "$cIniFileBak"
+                    if [[ ! -f "$cIniFileBak" ]]; then
+                        echo "Falha ao criar arquivo de backup: $cIniFileBak"
+                        return 1
+                    fi
+
+                    #echo "Atualizado INI para novo RPO"
+                   alterar_ini "$cIniFile" "$cEnvironment" "$cKeyINIRPO" "$cRPONewFileAPO"
+                fi
+            done
+
+        done
     done
 
-    # if [[ -d "$cRPODestPathRemoto" ]]; then
-    #     cRPONewFileRemoto="${cRPODestPathRemoto}/${cRPONewFolder}"
-    #     cRPONewFileCustomRemoto="${cRPONewFileRemoto}/${RPOName}"
-    #     cRPONewFileAPORemoto="${cRPONewFileRemoto}/${RPOName}"
-    #     mkdir -p "$cRPONewFileRemoto"
-    #     cp "$cRPOOrigFile" "$cRPONewFileAPORemoto"
-    #     if [[ ! -f "$cRPONewFileAPORemoto" ]]; then
-    #         echo "Remote file not copied: $cRPONewFileAPORemoto"
-    #         return 1
-    #     fi
-    #     for appserver in "${aAppservers[@]}"; do
-    #         cIniFile="${cPathProtheusRemoto}${cPathBinarios}/${appserver}/${cAppserverIniFile}"
-    #         cIniFileBak="${cPathProtheusRemoto}${cPathBinarios}/${appserver}/${cAppserverNameFile}_${cRPONewFolder}.bak"
-    #         if [[ -f "$cIniFile" ]]; then
-    #             echo "Backing up remote INI file: $cIniFileBak"
-    #             cp "$cIniFile" "$cIniFileBak"
-    #             if [[ ! -f "$cIniFileBak" ]]; then
-    #                 echo "Failed to create remote INI backup: $cIniFileBak"
-    #                 return 1
-    #             fi
-    #             echo "Updating remote INI file to point to new RPO: $cIniFile"
-    #             declare -A kv_list=(["RPOCustom"]="$cRPONewFileCustomRemoto")
-    #             set_or_add_ini_value "$cIniFile" "${kv_list[@]}"
-    #         fi
-    #     done
-    # fi
-
-    echo "$(date) | User:$(whoami) | Troca de RPO" >> "$logfile"
+    echo "$(date) | User:$(whoami) | Troca de RPO - $cTipoTrocaDoRpo " >> "$logfile" 
     echo -e "\e[1;32mSucesso!!! \e[0m"
     return 0
 }
