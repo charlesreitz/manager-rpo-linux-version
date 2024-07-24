@@ -8,6 +8,12 @@
 
 # CONFIGURATION VARIABLES
 # Update these variables based on your environment
+# Definindo sequências de escape para cores
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m' # No Color
+
 SCRIPT_DIR="$(dirname "$0")"
 INI_FILE="$SCRIPT_DIR/managerrpo.ini"
 
@@ -91,6 +97,8 @@ function change_rpo_file() {
     rponamecustom=$(get_ini_value "ambiente" "rponamecustom")
     rponamedefault=$(get_ini_value "ambiente" "rponamedefault")
     ambienteatualizarpo=$(get_ini_value "ambiente" "ambienteatualizarpo")
+    arquivoappserver_ini=$(get_ini_value "ambiente" "arquivoappserver_ini")
+    arquivoappsrv_ini=$(get_ini_value "ambiente" "arquivoappsrv_ini")
 
 
     pathprotheusdefault=$(get_ini_value "ambiente" "pathprotheusdefault")
@@ -102,8 +110,7 @@ function change_rpo_file() {
 
     cPathBinarioDefrag=$(get_ini_value "ambiente" "binariodefrag")
 
-    cAppserverNameFile="appserver"
-    cAppserverIniFile="${cAppserverNameFile}.ini"
+
     logfile="${SCRIPT_DIR}/managerrpo.log"
 
 
@@ -137,7 +144,7 @@ function change_rpo_file() {
                 cRPONewFileAPO=${pathprotheusdefault}"${cPathRPO}/${cEnvironment}/$cTipoTrocaDoRpo/$cDataAtual" 
 
                 if [[ ! -f "${cRPOOrigem}" ]]; then
-                    echo "RPO de origem (default) não localizado: $cRPOOrigem"
+                    echo -e "${RED}RPO de origem (default) não localizado: $cRPOOrigem${NC}"
                     return 1
                 fi
 
@@ -155,7 +162,7 @@ function change_rpo_file() {
 
             #echo "Verificando se o arquivo foi copiado $cRPODestPathWithFileName"
             if [[ ! -f "$cRPODestPathWithFileName" ]]; then
-                echo "RPO destino não localizado: $cRPODestPathWithFileName"
+                echo -e "${RED}RPO destino não localizado: $cRPODestPathWithFileName${NC}"
                 return 1
             fi
 
@@ -163,24 +170,55 @@ function change_rpo_file() {
 
                 if  [ -d "${pathprotheus}${cPathBinarios}/${appserver}" ]; then
 
+              
+                    cAppserverIniFile="${arquivoappserver_ini}"
+                    cIniFile="${pathprotheus}${cPathBinarios}/${appserver}/${cAppserverIniFile}"
+               
+                    #echo ${cIniFile}
+                     if [ ! -f ${cIniFile} ]; then
+                        #echo "O arquivo appserver.ini não existe. Procurando por appsrv*.ini..."
+                        #echo ${pathprotheus}${cPathBinarios}/${appserver}/${arquivoappsrv_ini}
+                        # Procura por arquivos que correspondem ao padrão appsrv*.ini
+                        files=($(ls ${pathprotheus}${cPathBinarios}/${appserver}/${arquivoappsrv_ini} 2>/dev/null))
+
+                        # Verifica se algum arquivo foi encontrado
+                        if [ ${#files[@]} -gt 0 ]; then
+                            if [ ${#files[@]} -eq 1 ]; then
+                                #echo -e "${GREEN}O seguinte arquivo foi encontrado: ${files[0]}"
+                                for file in "${files[@]}"; do
+                                    #echo "$(basename $file)"
+                                    cAppserverIniFile="$(basename $file)"
+                                    cIniFile="${pathprotheus}${cPathBinarios}/${appserver}/${cAppserverIniFile}"
+                                done
+
+                            else
+                                echo -e "${RED}Erro: Mais de um arquivo appsrv*.ini foi encontrado.${NC}"
+                                echo -e "${RED}Arquivos encontrados: ${files[@]}${NC}"
+                                exit 1
+                            fi
+                        else
+                            echo -e "${RED}Nenhum arquivo appsrv*.ini foi encontrado.${NC}"
+                        fi
+                    fi
+
+                    #echo "Efetuado backup do arquivo INI: $cIniFileBak"
+                    cIniFileBak="${pathprotheus}${cPathBinarios}/${appserver}/${cFolderBak}/${cAppserverIniFile}.${cDataAtual}.bak"
+                    
                     if [ ! -d "${pathprotheus}${cPathBinarios}/${appserver}/${cFolderBak}" ]; then
                         # If the folder does not exist, create it
                         mkdir -p "${pathprotheus}${cPathBinarios}/${appserver}/${cFolderBak}"
                         #echo "Pasta criada: ${cPathProtheus}${cPathBinarios}/${appserver}/${cFolderBak}"
                     fi
-                    cIniFile="${pathprotheus}${cPathBinarios}/${appserver}/${cAppserverIniFile}"
-                    cIniFileBak="${pathprotheus}${cPathBinarios}/${appserver}/${cFolderBak}/${cAppserverNameFile}.ini.${cDataAtual}.bak"
-               
 
-                    #echo "Efetuado backup do arquivo INI: $cIniFileBak"
+                    #echo "${cIniFile} apra ${cIniFileBak}"
                     cp "$cIniFile" "$cIniFileBak"
                     if [[ ! -f "$cIniFileBak" ]]; then
-                        echo "Falha ao criar arquivo de backup: $cIniFileBak"
+                        echo -e "${RED}Falha ao criar arquivo de backup: $cIniFileBak${NC}"
                         return 1
                     fi
 
                     #echo "Atualizado INI para novo RPO"
-                   alterar_ini "$cIniFile" "$cEnvironment" "$cKeyINIRPO" "$cRPONewFileAPO"
+                    alterar_ini "$cIniFile" "$cEnvironment" "$cKeyINIRPO" "$cRPONewFileAPO"
                 fi
             done
 
@@ -195,13 +233,13 @@ function change_rpo_file() {
 
 # Check if the parameter is provided
 if [[ -z "$1" ]]; then
-    echo "Informa qual RPO deseja trocar 'default' ou 'custom'"
+    echo -e "${RED}Informa qual RPO deseja trocar 'default' ou 'custom'${NC}"
     exit 1
 fi
 
 # Check if the parameter is valid
 if [[ "$1" != "default" && "$1" != "custom" ]]; then
-    echo "Não foi enviadoo o RPO que deseja trocar, informe 'default' ou 'custom'"
+    echo -e "${RED}Não foi enviadoo o RPO que deseja trocar, informe 'default' ou 'custom'${RED}"
     exit 1
 fi
 
