@@ -19,3 +19,7 @@ https://tdn.totvs.com/display/PROT/Protheus+em+Linux+-+Configurar+o+NFS
      
 
 ![alt text](demo.gif "Demo")
+
+### Validação 
+
+Script validado no OpenSusse e Susse Enterprise
