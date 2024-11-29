@@ -15,3 +15,6 @@ https://tdn.totvs.com/display/PROT/Protheus+em+Linux+-+Configurar+o+NFS
 ### Melhorias
  - Alterar para também utilizar SSH ao invés de NFS 
     https://tdn.totvs.com/pages/viewpage.action?pageId=825303316
+     
+
+![alt text](demo.gif "Demo")
