@@ -6,9 +6,10 @@ Utiliza o conceito de troca a quente do Repositório de Objetos do protheus.
 
 
 ## Servidores secundários 
-Para trocar o RPO em outro servidores, será necessário utilizar o NFS 
+Para trocar o RPO em outro servidores, será necessário utilizar o SSH com chave pública  
 
 https://tdn.totvs.com/display/PROT/Protheus+em+Linux+-+Configurar+o+NFS
+
 
 
 
